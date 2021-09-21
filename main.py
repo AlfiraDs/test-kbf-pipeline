@@ -9,7 +9,7 @@ def train(data_path, model_file):
     import tensorflow as tf
     from tensorflow.python import keras
 
-    # Download the dataset and split into training and test data. 
+    # Download the dataset and split into training and test data.
     fashion_mnist = keras.datasets.fashion_mnist
 
     (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
@@ -36,7 +36,7 @@ def train(data_path, model_file):
     test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
     print('Test accuracy:', test_acc)
 
-    # Save the model to the designated 
+    # Save the model to the designated
     model.save(f'{data_path}/{model_file}')
 
     # Save the test_data as a pickle file to be used by the predict component.
@@ -108,10 +108,10 @@ client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
 
 
 # Our next step will be to create the various components that will make up the pipeline. Define the pipeline using the *@dsl.pipeline* decorator.
-# 
+#
 # The pipeline function is defined and includes a number of paramters that will be fed into our various components throughout execution.
 # Kubeflow Pipelines are created decalaratively. This means that the code is not run until the pipeline is compiled.
-# 
+#
 # A [Persistent Volume Claim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 # can be quickly created using the [VolumeOp](https://) method to save and persist data between the components.
 # Note that while this is a great method to use locally, you could also use a cloud bucket for your persistent storage.

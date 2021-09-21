@@ -2,6 +2,8 @@ import kfp
 import kfp.dsl as dsl
 import kfp.components as comp
 
+__path__ = []
+
 
 def train(data_path, model_file):
     # func_to_container_op requires packages to be imported inside of the function.

@@ -1,8 +1,11 @@
+import os
+
 import kfp
 import kfp.dsl as dsl
 import kfp.components as comp
 
-__path__ = []
+
+__path__ = [os.path.abspath(os.path.dirname(__file__))]
 
 
 def train(data_path, model_file):

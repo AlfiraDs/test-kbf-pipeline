@@ -104,7 +104,9 @@ train_op = comp.func_to_container_op(train, base_image='tensorflow/tensorflow:la
 predict_op = comp.func_to_container_op(predict, base_image='tensorflow/tensorflow:latest-gpu-py3')
 
 # Create a client to enable communication with the Pipelines API server.
-client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
+# client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
+client = kfp.Client(host='pipelines-api.kubeflow01.sfo.corp.globant.com')
+# http://kubeflow01.sfo.corp.globant.com/
 
 
 # Our next step will be to create the various components that will make up the pipeline. Define the pipeline using the *@dsl.pipeline* decorator.

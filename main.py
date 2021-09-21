@@ -106,18 +106,11 @@ predict_op = comp.func_to_container_op(predict, base_image='tensorflow/tensorflo
 # Create a client to enable communication with the Pipelines API server.
 # client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
 # client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/?ns=aliaksandr-lashkov')
-client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/#/pipelines')
+# client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/#/pipelines:3000')
+client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/pipeline/apis/v1beta1/pipelines')
+
+
 # http://kubeflow01.sfo.corp.globant.com/
-
-
-# Our next step will be to create the various components that will make up the pipeline. Define the pipeline using the *@dsl.pipeline* decorator.
-#
-# The pipeline function is defined and includes a number of paramters that will be fed into our various components throughout execution.
-# Kubeflow Pipelines are created decalaratively. This means that the code is not run until the pipeline is compiled.
-#
-# A [Persistent Volume Claim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
-# can be quickly created using the [VolumeOp](https://) method to save and persist data between the components.
-# Note that while this is a great method to use locally, you could also use a cloud bucket for your persistent storage.
 
 
 # Define the pipeline
@@ -185,8 +178,19 @@ def main():
     #                                                   pipeline_conf=None,
     #                                                   namespace='alex-test-namespace'
     #                                                   )
-    client.upload_pipeline('{}.zip'.format(experiment_name), experiment_name,
-                                        f'{experiment_name} description')
+    response = client.upload_pipeline(
+        pipeline_package_path='{}.zip'.format(experiment_name),
+        pipeline_name=experiment_name,
+        description=f'{experiment_name} description',
+    )
+    print(f'uploading pipeline response: \n{response}')
+
+    response = client.upload_pipeline_version(
+        pipeline_package_path='{}.zip'.format(experiment_name),
+        pipeline_version_name=experiment_name + '_v1',
+        pipeline_id=None,
+        pipeline_name=experiment_name)
+    print(f'uploading pipeline version response: \n{response}')
 
 
 if __name__ == '__main__':

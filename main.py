@@ -1,11 +1,6 @@
-import os
-
 import kfp
 import kfp.dsl as dsl
 import kfp.components as comp
-
-
-# __path__ = [os.path.abspath(os.path.dirname(__file__))]
 
 
 def train(data_path, model_file):
@@ -110,7 +105,8 @@ predict_op = comp.func_to_container_op(predict, base_image='tensorflow/tensorflo
 
 # Create a client to enable communication with the Pipelines API server.
 # client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
-client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/?ns=aliaksandr-lashkov')
+# client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/?ns=aliaksandr-lashkov')
+client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/#/pipelines')
 # http://kubeflow01.sfo.corp.globant.com/
 
 
@@ -189,7 +185,7 @@ def main():
     #                                                   pipeline_conf=None,
     #                                                   namespace='alex-test-namespace'
     #                                                   )
-    run_result = client.upload_pipeline('{}.zip'.format(experiment_name), experiment_name,
+    client.upload_pipeline('{}.zip'.format(experiment_name), experiment_name,
                                         f'{experiment_name} description')
 
 

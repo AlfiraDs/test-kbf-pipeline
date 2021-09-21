@@ -105,7 +105,7 @@ predict_op = comp.func_to_container_op(predict, base_image='tensorflow/tensorflo
 
 # Create a client to enable communication with the Pipelines API server.
 # client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
-client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com:3000')
+client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/?ns=aliaksandr-lashkov')
 # http://kubeflow01.sfo.corp.globant.com/
 
 

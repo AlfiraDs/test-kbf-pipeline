@@ -1,6 +1,11 @@
+import os
+
 import kfp
 import kfp.dsl as dsl
 import kfp.components as comp
+
+
+# __path__ = [os.path.abspath(os.path.dirname(__file__))]
 
 
 def train(data_path, model_file):
@@ -153,41 +158,40 @@ def mnist_container_pipeline(
     )
 
 
-# ### 2.4 Run pipeline
+def main():
+    DATA_PATH = '/mnt'
+    MODEL_PATH = 'mnist_model.h5'
+    # An integer representing an image from the test set that the model will attempt to predict the label for.
+    IMAGE_NUMBER = 0
 
-# Finally we feed our pipeline definition into the compiler and run it as an experiment. This will give us 2 links at the bottom that we can follow to the [Kubeflow Pipelines UI](https://www.kubeflow.org/docs/pipelines/overview/pipelines-overview/) where you can check logs, artifacts, inputs/outputs, and visually see the progress of your pipeline.
+    # In[ ]:
 
-# Define some environment variables which are to be used as inputs at various points in the pipeline.
+    pipeline_func = mnist_container_pipeline
 
-# In[ ]:
+    # In[ ]:
+
+    experiment_name = 'fashion_mnist_kubeflow'
+    run_name = pipeline_func.__name__ + ' run'
+
+    arguments = {"data_path": DATA_PATH,
+                 "model_file": MODEL_PATH,
+                 "image_number": IMAGE_NUMBER}
+
+    # Compile pipeline to generate compressed YAML definition of the pipeline.
+    kfp.compiler.Compiler().compile(pipeline_func,
+                                    '{}.zip'.format(experiment_name))
+
+    # # Submit pipeline directly from pipeline function
+    # run_result = client.create_run_from_pipeline_func(pipeline_func=pipeline_func,
+    #                                                   arguments=arguments,
+    #                                                   run_name=run_name,
+    #                                                   experiment_name=experiment_name,
+    #                                                   pipeline_conf=None,
+    #                                                   namespace='alex-test-namespace'
+    #                                                   )
+    run_result = client.upload_pipeline('{}.zip'.format(experiment_name), experiment_name,
+                                        f'{experiment_name} description')
 
 
-DATA_PATH = '/mnt'
-MODEL_PATH = 'mnist_model.h5'
-# An integer representing an image from the test set that the model will attempt to predict the label for.
-IMAGE_NUMBER = 0
-
-# In[ ]:
-
-
-pipeline_func = mnist_container_pipeline
-
-# In[ ]:
-
-
-experiment_name = 'fashion_mnist_kubeflow'
-run_name = pipeline_func.__name__ + ' run'
-
-arguments = {"data_path": DATA_PATH,
-             "model_file": MODEL_PATH,
-             "image_number": IMAGE_NUMBER}
-
-# Compile pipeline to generate compressed YAML definition of the pipeline.
-kfp.compiler.Compiler().compile(pipeline_func,
-                                '{}.zip'.format(experiment_name))
-
-# Submit pipeline directly from pipeline function
-run_result = client.create_run_from_pipeline_func(pipeline_func,
-                                                  experiment_name=experiment_name,
-                                                  run_name=run_name,
-                                                  arguments=arguments)
+if __name__ == '__main__':
+    main()

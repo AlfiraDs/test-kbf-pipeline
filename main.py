@@ -4,125 +4,79 @@ import kfp.components as comp
 
 
 def train(data_path, model_file):
-    # func_to_container_op requires packages to be imported inside of the function.
     import pickle
-    import tensorflow as tf
-    from tensorflow.python import keras
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import roc_auc_score
+    from sklearn.datasets import load_wine
+    from sklearn.model_selection import train_test_split
 
-    # Download the dataset and split into training and test data.
-    fashion_mnist = keras.datasets.fashion_mnist
-
-    (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
-
-    # Normalize the data so that the values all fall between 0 and 1.
-    train_images = train_images / 255.0
-    test_images = test_images / 255.0
-
-    # Define the model using Keras.
-    model = keras.Sequential([
-        keras.layers.Flatten(input_shape=(28, 28)),
-        keras.layers.Dense(128, activation='relu'),
-        keras.layers.Dense(10)
-    ])
-
-    model.compile(optimizer='adam',
-                  loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  metrics=['accuracy'])
-
-    # Run a training job with specified number of epochs
-    model.fit(train_images, train_labels, epochs=10)
+    X, y = load_wine(return_X_y=True)
+    y = y == 2
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+    model = RandomForestClassifier(n_estimators=10, random_state=42)
+    model.fit(X_train, y_train)
 
     # Evaluate the model and print the results
-    test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
-    print('Test accuracy:', test_acc)
+    test_roc_auc = roc_auc_score(y_test, model.predict(X_test))
+    print('Test roc_auc:', test_roc_auc)
 
     # Save the model to the designated
-    model.save(f'{data_path}/{model_file}')
+    with open(f'{data_path}/{model_file}', 'wb') as f:
+        pickle.dump(model, f)
 
     # Save the test_data as a pickle file to be used by the predict component.
     with open(f'{data_path}/test_data', 'wb') as f:
-        pickle.dump((test_images, test_labels), f)
+        pickle.dump((X_test, y_test), f)
 
 
-def predict(data_path, model_file, image_number):
-    # func_to_container_op requires packages to be imported inside of the function.
+def predict(data_path, model_file, sample_number):
     import pickle
-
-    import tensorflow as tf
-    from tensorflow import keras
-
     import numpy as np
 
-    # Load the saved Keras model
-    model = keras.models.load_model(f'{data_path}/{model_file}')
+    with open(f'{data_path}/{model_file}', 'rb') as f:
+        model = pickle.load(f)
 
-    # Load and unpack the test_data
     with open(f'{data_path}/test_data', 'rb') as f:
-        test_data = pickle.load(f)
-    # Separate the test_images from the test_labels.
-    test_images, test_labels = test_data
-    # Define the class names.
-    class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
-                   'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+        X_test, y_test = pickle.load(f)
 
-    # Define a Softmax layer to define outputs as probabilities
-    probability_model = tf.keras.Sequential([model,
-                                             tf.keras.layers.Softmax()])
-
-    # See https://github.com/kubeflow/pipelines/issues/2320 for explanation on this line.
-    image_number = int(image_number)
-
-    # Grab an image from the test dataset.
-    img = test_images[image_number]
-
-    # Add the image to a batch where it is the only member.
+    sample_number = int(sample_number)
+    img = X_test[sample_number]
     img = (np.expand_dims(img, 0))
-
-    # Predict the label of the image.
-    predictions = probability_model.predict(img)
-
-    # Take the prediction with the highest probability
+    predictions = model.predict(img)
     prediction = np.argmax(predictions[0])
-
-    # Retrieve the true label of the image from the test labels.
-    true_label = test_labels[image_number]
-
-    class_prediction = class_names[prediction]
-    confidence = 100 * np.max(predictions)
-    actual = class_names[true_label]
+    true_label = y_test[sample_number]
 
     with open(f'{data_path}/result.txt', 'w') as result:
-        result.write(" Prediction: {} | Confidence: {:2.0f}% | Actual: {}".format(class_prediction,
-                                                                                  confidence,
-                                                                                  actual))
+        result.write(f"Prediction: {prediction} | Actual: {true_label}")
 
     print('Prediction has be saved successfully!')
 
 
+# train(r'./data', 'model.pkl')
+# predict(r'./data', 'model.pkl', 0)
+
+
 # Create train and predict lightweight components.
-train_op = comp.func_to_container_op(train, base_image='tensorflow/tensorflow:latest-gpu-py3')
-predict_op = comp.func_to_container_op(predict, base_image='tensorflow/tensorflow:latest-gpu-py3')
+train_op = comp.func_to_container_op(train, base_image='ecoron/python36-sklearn')
+predict_op = comp.func_to_container_op(predict, base_image='ecoron/python36-sklearn')
 
 # Create a client to enable communication with the Pipelines API server.
 # client = kfp.Client(host='pipelines-api.kubeflow.svc.cluster.local:8888')
 # client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/?ns=aliaksandr-lashkov')
 # client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/_/pipeline/#/pipelines:3000')
-client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/pipeline/apis/v1beta1/pipelines')
-
-
-# http://kubeflow01.sfo.corp.globant.com/
+client = kfp.Client(host='http://kubeflow01.sfo.corp.globant.com/pipeline')
 
 
 # Define the pipeline
 @dsl.pipeline(
-    name='MNIST Pipeline',
-    description='A toy pipeline that performs mnist model training and prediction.'
+    name='WINE Pipeline',
+    description='A toy pipeline that performs WINE model training and prediction.'
 )
 # Define parameters to be fed into pipeline
-def mnist_container_pipeline(
+def wine_container_pipeline(
         data_path: str,
         model_file: str,
-        image_number: int
+        sample_number: int
 ):
     # Define volume to share data between components.
     vop = dsl.VolumeOp(
@@ -131,40 +85,30 @@ def mnist_container_pipeline(
         size="1Gi",
         modes=dsl.VOLUME_MODE_RWM)
 
-    # Create MNIST training component.
-    mnist_training_container = train_op(data_path, model_file).add_pvolumes({data_path: vop.volume})
+    wine_training_container = train_op(data_path, model_file).add_pvolumes({data_path: vop.volume})
+    wine_predict_container = predict_op(data_path, model_file, sample_number).add_pvolumes(
+        {data_path: wine_training_container.pvolume})
 
-    # Create MNIST prediction component.
-    mnist_predict_container = predict_op(data_path, model_file, image_number).add_pvolumes(
-        {data_path: mnist_training_container.pvolume})
-
-    # Print the result of the prediction
-    mnist_result_container = dsl.ContainerOp(
+    wine_result_container = dsl.ContainerOp(
         name="print_prediction",
         image='library/bash:4.4.23',
-        pvolumes={data_path: mnist_predict_container.pvolume},
+        pvolumes={data_path: wine_predict_container.pvolume},
         arguments=['cat', f'{data_path}/result.txt']
     )
 
 
 def main():
     DATA_PATH = '/mnt'
-    MODEL_PATH = 'mnist_model.h5'
-    # An integer representing an image from the test set that the model will attempt to predict the label for.
-    IMAGE_NUMBER = 0
+    MODEL_PATH = 'wine_model.pkl'
+    SAMPLE_NUMBER = 0
 
-    # In[ ]:
-
-    pipeline_func = mnist_container_pipeline
-
-    # In[ ]:
-
-    experiment_name = 'fashion_mnist_kubeflow'
+    pipeline_func = wine_container_pipeline
+    experiment_name = 'wine_kubeflow'
     run_name = pipeline_func.__name__ + ' run'
 
     arguments = {"data_path": DATA_PATH,
                  "model_file": MODEL_PATH,
-                 "image_number": IMAGE_NUMBER}
+                 "image_number": SAMPLE_NUMBER}
 
     # Compile pipeline to generate compressed YAML definition of the pipeline.
     kfp.compiler.Compiler().compile(pipeline_func,
